@@ -32,6 +32,7 @@ def entropy(Y: pd.Series) -> float:
     for i in Y.unique():
         p = (Y == i).sum() / Y.size
         entropy += -p * np.log2(p)
+    return entropy
 
 
 def gini_index(Y: pd.Series) -> float:
@@ -43,6 +44,7 @@ def gini_index(Y: pd.Series) -> float:
     for i in Y.unique():
         p = (Y == i).sum() / Y.size
         gini_index -= p ** 2
+    return gini_index
 
 
 def information_gain(Y: pd.Series, attr: pd.Series, criterion: str) -> float:
@@ -80,7 +82,7 @@ def opt_split_attribute(X: pd.DataFrame, y: pd.Series, criterion, features: pd.S
             split_feature = feature
     return split_feature
 
-def split_data_discrete(X: pd.DataFrame, y: pd.Series, features):
+def split_data_discrete(X: pd.DataFrame, y: pd.Series, attribute):
     """
     Function to get the split of the data for discrete features based on information gain.
 
@@ -88,11 +90,10 @@ def split_data_discrete(X: pd.DataFrame, y: pd.Series, features):
 
     return: split of the dataset based on the optimal attribute
     """
-    split_feature = opt_split_attribute(X, y, 'entropy', features)
     split_data = {}
-    for i in X[split_feature].unique():
-        split_data[i] = (X[X[split_feature] == i], y[X[split_feature] == i])
-    return split_feature, split_data
+    for i in X[attribute].unique():
+        split_data[i] = (X[X[attribute] == i], y[X[attribute] == i])
+    return  split_data
 
 def split_data_real(X: pd.DataFrame, y: pd.Series, attribute):
     """
@@ -107,4 +108,3 @@ def split_data_real(X: pd.DataFrame, y: pd.Series, attribute):
     """
 
     # Split the data based on a particular value of a particular attribute. You may use masking as a tool to split the data.
-    
