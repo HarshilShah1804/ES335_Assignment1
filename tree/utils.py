@@ -10,6 +10,8 @@ def one_hot_encoding(X: pd.DataFrame) -> pd.DataFrame:
     """
     Function to perform one hot encoding on the input data
     """
+    one_hot_encoded_data = pd.get_dummies(X, columns = ['Remarks', 'Gender'])
+    print(one_hot_encoded_data)
 
     pass
 
