@@ -11,7 +11,7 @@ def one_hot_encoding(X: pd.DataFrame) -> pd.DataFrame:
     Function to perform one hot encoding on the input data
     """
 
-    pass
+
 
 def check_ifreal(y: pd.Series) -> bool:
     """
@@ -108,3 +108,6 @@ def split_data_real(X: pd.DataFrame, y: pd.Series, attribute):
     """
 
     # Split the data based on a particular value of a particular attribute. You may use masking as a tool to split the data.
+    split_data = {}
+    values = X[attribute]
+    
