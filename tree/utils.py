@@ -13,7 +13,7 @@ def one_hot_encoding(X: pd.DataFrame) -> pd.DataFrame:
     one_hot_encoded_data = pd.get_dummies(X, columns = ['Remarks', 'Gender'])
     print(one_hot_encoded_data)
 
-    pass
+
 
 def check_ifreal(y: pd.Series) -> bool:
     """
@@ -110,3 +110,6 @@ def split_data_real(X: pd.DataFrame, y: pd.Series, attribute):
     """
 
     # Split the data based on a particular value of a particular attribute. You may use masking as a tool to split the data.
+    split_data = {}
+    values = X[attribute]
+    
