@@ -38,7 +38,7 @@ class DecisionTree:
         self.criterion = criterion
         self.max_depth = max_depth
 
-    def fit(self, x: pd.DataFrame, y: pd.Series, depth=max_depth) -> Node:
+    def fit(self, x: pd.DataFrame, y: pd.Series, depth=None) -> Node:
         """
         Function to train and construct the decision tree
         """
@@ -46,8 +46,9 @@ class DecisionTree:
         # If you wish your code can have cases for different types of input and output data (discrete, real)
         # Use the functions from utils.py to find the optimal attribute to split upon and then construct the tree accordingly.
         # You may(according to your implemetation) need to call functions recursively to construct the tree. 
-
-        if(max_depth == 0):
+        if depth is None:
+            depth=self.max_depth
+        if(depth == 0):
             return
         features = x.columns
         if check_ifreal(x[features[0]]) and check_ifreal(y):  #riro
@@ -64,11 +65,9 @@ class DecisionTree:
             split_data = split_data_discrete(x,y,split_attribute)
             children = []
             for i in split_data:
-                children.append(fit(split_data[i], split_data[split_data[i]], max_depth-1))
+                children.append(self.fit(split_data[i][0], split_data[i][1], depth-1))
             node = Node(0, split_attribute, None, None, children)
             return node
-            # print(split_data)
-            # print(split_data['Sunny'])
 
 
     def predict(self, X: pd.DataFrame) -> pd.Series:
