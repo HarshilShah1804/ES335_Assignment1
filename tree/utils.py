@@ -3,66 +3,192 @@ You can add your own functions here according to your decision tree implementati
 There is no restriction on following the below template, these fucntions are here to simply help you.
 """
 
-import pandas as pd
 import numpy as np
-from typing import Union
+import pandas as pd
+
+
 
 def one_hot_encoding(X: pd.DataFrame) -> pd.DataFrame:
     """
     Function to perform one hot encoding on the input data
+
+    Returns the one hot encoded data
     """
 
+    for column in X.columns:
+        if not check_if_real(X[column]) and len(X[column].unique()) > 2:
+            dummies = pd.get_dummies(X[column], prefix=column)
+            X = pd.concat([X, dummies], axis=1)
+            X.drop(column, axis=1, inplace=True)
+
+    return X
 
 
-def check_ifreal(y: pd.Series) -> bool:
+
+
+def check_ifreal(y: pd.Series, real_distinct_threshold: int = 6) -> bool:
     """
     Function to check if the given series has real or discrete values
+
+    Returns True if the series has real (continuous) values, False otherwise (discrete).
     """
 
-    assert y.size > 0
-    return isinstance(y[0], (int, float))
+    # # if dtype is "category", it is a discrete variable
+    if pd.api.types.is_categorical_dtype(y) or pd.api.types.is_bool_dtype(y) or pd.api.types.is_string_dtype(y):
+        return False
+    if pd.api.types.is_float_dtype(y):
+        return True
+    if pd.api.types.is_integer_dtype(y):
+        return len(y.unique()) >= real_distinct_threshold
+    return False
+
 
 
 def entropy(Y: pd.Series) -> float:
     """
     Function to calculate the entropy
-    """
 
-    assert Y.size > 0
-    entropy = 0.
-    for i in Y.unique():
-        p = (Y == i).sum() / Y.size
-        entropy += -p * np.log2(p)
+    entropy = -sum(p_i * log2(p_i))
+    """
+    
+    value_counts = Y.value_counts()
+    prob = value_counts / Y.size
+    entropy = -np.sum(prob * np.log2(prob + 1e-10))
     return entropy
 
 
 def gini_index(Y: pd.Series) -> float:
     """
     Function to calculate the gini index
+
+    gini_index = 1 - sum(p_i^2)
     """
-    assert Y.size > 0
-    gini_index = 1.
-    for i in Y.unique():
-        p = (Y == i).sum() / Y.size
-        gini_index -= p ** 2
-    return gini_index
+
+    value_counts = Y.value_counts()
+    probs = value_counts / Y.size
+    gini_index_value = 1 - np.sum(probs ** 2)
+
+    return gini_index_value
 
 
-def information_gain(Y: pd.Series, attr: pd.Series, criterion: str) -> float:
+
+def mse(Y: pd.Series) -> float:
+    """
+    Function to calculate the root-mean-squared-error(rmse)
+
+    rmse = sqrt(sum((y_i - y)^2) / n)
+    """
+
+    Y_mean = Y.mean()
+    mse = np.sum((Y - Y_mean) ** 2) / Y.size
+
+    return mse
+
+
+
+def check_criteria(Y:pd.Series, criterion: str) -> str:
+    """
+    Function to check if the criterion is valid
+
+    Returns the criterion
+    """
+
+    if criterion == "information_gain":
+        if check_ifreal(Y):
+            this_criteria = 'mse'
+        else:
+            this_criteria = 'entropy'
+    if criterion == "gini_index":
+        this_criteria = 'gini_index'
+    
+    criterion_funcs_map = {
+        'entropy': entropy,
+        'gini_index': gini_index,
+        'mse': mse
+    }
+    criterion_func = criterion_funcs_map[this_criteria]
+
+    return this_criteria, criterion_func
+
+
+
+def opt_threshold(Y: pd.Series, attr: pd.Series, criterion) -> float:
+    """
+    Function to find the optimal threshold for a real feature
+
+    Returns the threshold value
+    """
+
+    this_criteria, criterion_func = check_criteria(Y, criterion)
+
+    sorted_attr = attr.sort_values()
+    # Find the split points by taking the average of consecutive values (midpoints)
+    if sorted_attr.size == 1:
+        return None
+    elif sorted_attr.size == 2:
+        return (sorted_attr.sum()) / 2
+    split_points = (sorted_attr[:-1] + sorted_attr[1:]) / 2
+
+    best_threshold = None
+    best_gain = -np.inf
+
+    for threshold in split_points:
+        Y_left = Y[attr <= threshold]
+        Y_right = Y[attr > threshold]
+
+        if Y_left.empty or Y_right.empty:
+            continue
+
+        total_criterion = Y_left.size / Y.size * criterion_func(Y_left) + Y_right.size / Y.size * criterion_func(Y_right)
+
+        information_gain_value = criterion_func(Y) - total_criterion
+
+        if information_gain_value > best_gain:
+            best_threshold = threshold
+            best_gain = information_gain_value
+
+    return best_threshold
+
+
+
+def information_gain(Y: pd.Series, attribute: pd.Series, criterion = None) -> float:
     """
     Function to calculate the information gain using criterion (entropy, gini index or MSE)
+
+    information_gain = criterion(Y) - sum((Y_i.size / Y.size) * criterion(Y_i))
+
+    Raises:
+    - ValueError: If the criterion is not one of 'entropy', 'gini', or 'mse'.
     """
 
-    assert Y.size == attr.size
-    if criterion == 'entropy':
-        return entropy(Y) - sum([(attr == i).sum() / Y.size * entropy(Y[attr == i]) for i in attr.unique()])
-    elif criterion == 'gini_index':
-        return gini_index(Y) - sum([(attr == i).sum() / Y.size * gini_index(Y[attr == i]) for i in attr.unique()])
-    elif criterion == 'mse':
-        return ((Y - attr) ** 2).mean() - sum([(attr == i).sum() / Y.size * ((Y[attr == i] - attr[attr == i]) ** 2).mean() for i in attr.unique()])
+    this_criteria, criterion_func = check_criteria(Y, criterion)
+
+    # If the attribute is real, find the split points and calculate the information gain for each split point
+    if check_ifreal(attribute):
+        threshold = opt_threshold(Y, attribute, criterion)
+        if threshold is None:
+            return 0  # No valid threshold found
+        Y_left = Y[attribute <= threshold]
+        Y_right = Y[attribute > threshold]
+
+        information_gain_value = criterion_func(Y) - (Y_left.size / Y.size * criterion_func(Y_left) + Y_right.size / Y.size * criterion_func(Y_right))
+        
+        return information_gain_value
+    
+    # If the attribute is discrete, calculate the information gain for each unique value of the attribute
+    total_criterion = 0
+
+    for value in attribute.unique():
+        Y_i = Y[attribute == value]
+        total_criterion += (Y_i.size / Y.size) * criterion_func(Y_i)
+
+    information_gain_value = criterion_func(Y) - total_criterion
+
+    return information_gain_value
 
 
-def opt_split_attribute(X: pd.DataFrame, y: pd.Series, features: pd.Series, criterion):
+
+def opt_split_attribute(X: pd.DataFrame, y: pd.Series, features: pd.Series, criterion: str) -> str:
     """
     Function to find the optimal attribute to split about.
     If needed you can split this function into 2, one for discrete and one for real valued features.
@@ -74,90 +200,48 @@ def opt_split_attribute(X: pd.DataFrame, y: pd.Series, features: pd.Series, crit
     """
 
     # According to wheather the features are real or discrete valued and the criterion, find the attribute from the features series with the maximum information gain (entropy or varinace based on the type of output) or minimum gini index (discrete output).
-    best_attribute = None
-    best_gain = -float('inf')
 
-    for attribute in features:
-        X_col = X[attribute]
-        
-        # Check if the attribute is real or discrete
-        if check_ifreal(X_col):
-            threshold = find_optimal_threshold(y, X_col, criterion)
-            if threshold is None:
-                continue
-            
-            gain = information_gain(y, X_col <= threshold, criterion) if criterion == "information_gain" else gini_index(y)
-        else:
-            # For discrete attributes, just calculate the criterion directly
-            gain = information_gain(y, X_col, criterion) if criterion == "information_gain" else gini_index(y)
+    best_feature = None
+    best_gain = -np.inf
 
-        # Update the best attribute if the current gain is better
+    for feature in features:
+        gain = information_gain(y, X[feature], criterion)
+
         if gain > best_gain:
+            best_feature = feature
             best_gain = gain
-            best_attribute = attribute
 
-    return best_attribute
-
-def find_optimal_threshold(y: pd.Series, X_col: pd.Series, criterion: str) -> float:
-    best_threshold = None
-    best_gain = -float('inf')
-
-    # Sort the values and corresponding target labels
-    sorted_indices = X_col.argsort()
-    X_sorted = X_col.iloc[sorted_indices]
-    y_sorted = y.iloc[sorted_indices]
-
-    # Iterate through all possible thresholds
-    for i in range(1, len(y_sorted)):
-        if X_sorted.iloc[i] == X_sorted.iloc[i-1]:
-            continue
-        
-        # Define the threshold as the midpoint between adjacent values
-        threshold = (X_sorted.iloc[i] + X_sorted.iloc[i-1]) / 2
-        
-        # Split the data based on the threshold
-        left_mask = X_sorted <= threshold
-        right_mask = X_sorted > threshold
-        
-        y_left = y_sorted[left_mask]
-        y_right = y_sorted[right_mask]
-
-        # Compute the criterion (e.g., information gain)
-        if criterion == "information_gain":
-            gain = information_gain(y_sorted, X_sorted, criterion)
-        elif criterion == "gini_index":
-            gain = gini_index(y_sorted, X_sorted)
-        else:
-            raise ValueError(f"Unknown criterion: {criterion}")
-
-        # Update the best threshold if the current gain is better
-        if gain > best_gain:
-            best_gain = gain
-            best_threshold = threshold
-
-    return best_threshold
+    return best_feature
 
 
-def split_data_discrete(X: pd.DataFrame, y: pd.Series, attribute, threshold=0):
+def split_data_discrete(X: pd.DataFrame, y: pd.Series, attribute, value):
     """
-    Function to get the split of the data for discrete features based on information gain.
-
-    features: pd.Series is a list of all the attributes we have to split upon
-
-    return: split of the dataset based on the optimal attribute
+    Funtion to split the data according to an attribute.
     """
-    left_mask = X[attribute] == X[attribute].mode()[0]  # Splitting based on the most frequent category
-    right_mask = ~left_mask
-
-    left_X = X[left_mask]
-    right_X = X[right_mask]
-    left_y = y[left_mask]
-    right_y = y[right_mask]
-
-    return left_X, right_X, left_y, right_y
     
+    X_left = X[X[attribute] == value]
+    X_right = X[X[attribute] != value]
 
-def split_data_real(X: pd.DataFrame, y: pd.Series, attribute, threshold):
+    y_left = y.loc[X_left.index]
+    y_right = y.loc[X_right.index]
+
+    return X_left, y_left, X_right, y_right
+
+
+def split_data_real(X: pd.DataFrame, y: pd.Series, attribute, value):
+    """
+    Funtion to split the data according to an attribute.
+    """
+    
+    X_left = X[X[attribute] <= value]
+    X_right = X[X[attribute] > value]
+
+    y_left = y.loc[X_left.index]
+    y_right = y.loc[X_right.index]
+
+    return X_left, y_left, X_right, y_right
+
+def split_data(X: pd.DataFrame, y: pd.Series, attribute, value):
     """
     Funtion to split the data according to an attribute.
     If needed you can split this function into 2, one for discrete and one for real valued features.
@@ -170,42 +254,16 @@ def split_data_real(X: pd.DataFrame, y: pd.Series, attribute, threshold):
     """
 
     # Split the data based on a particular value of a particular attribute. You may use masking as a tool to split the data.
-    left_mask = X[attribute] <= threshold
-    right_mask = ~left_mask
-
-    left_X = X[left_mask]
-    right_X = X[right_mask]
-    left_y = y[left_mask]
-    right_y = y[right_mask]
-
-    return left_X, right_X, left_y, right_y
-
-def split_data(X: pd.DataFrame, y: pd.Series, attribute: str, value: Union[float, int, str]) -> tuple:
-    """
-    Splits the dataset into two based on the given attribute and value.
-
-    Parameters:
-    - X (pd.DataFrame): The feature dataset.
-    - y (pd.Series): The target labels.
-    - attribute (str): The attribute/column name to split on.
-    - value (Union[float, int, str]): The value to split the attribute on.
-
-    Returns:
-    - X_left (pd.DataFrame): Subset of X where the attribute's value is <= value (for continuous) or == value (for discrete).
-    - y_left (pd.Series): Corresponding subset of y for X_left.
-    - X_right (pd.DataFrame): Subset of X where the attribute's value is > value (for continuous) or != value (for discrete).
-    - y_right (pd.Series): Corresponding subset of y for X_right.
-    """
+    
     if check_ifreal(X[attribute]):
-        # For continuous attributes, split based on the threshold
-        left_mask = X[attribute] <= value
-        right_mask = X[attribute] > value
-    else:
-        # For discrete attributes, split based on equality
-        left_mask = X[attribute] == value
-        right_mask = X[attribute] != value
+        X_left = X[X[attribute] <= value]
+        X_right = X[X[attribute] > value]
 
-    X_left, y_left = X[left_mask], y[left_mask]
-    X_right, y_right = X[right_mask], y[right_mask]
+    else:
+        X_left = X[X[attribute] == value]
+        X_right = X[X[attribute] != value]
+
+    y_left = y.loc[X_left.index]
+    y_right = y.loc[X_right.index]
 
     return X_left, y_left, X_right, y_right
