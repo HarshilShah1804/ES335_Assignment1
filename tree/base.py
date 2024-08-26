@@ -45,7 +45,7 @@ class DecisionTree:
         self.tree = None
 
 
-    def fit(self, X: pd.DataFrame, y: pd.Series, depth: int = 0) -> None:
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
         """
         Function to train and construct the decision tree
         """
