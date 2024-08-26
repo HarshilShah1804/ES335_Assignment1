@@ -45,7 +45,7 @@ class DecisionTree:
         self.tree = None
 
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
+    def fit(self, X: pd.DataFrame, y: pd.Series, depth=0) -> None:
         """
         Function to train and construct the decision tree
         """
@@ -55,11 +55,7 @@ class DecisionTree:
         # You may(according to your implemetation) need to call functions recursively to construct the tree.
 
         # If the depth exceeds max_depth or all the target values are the same, create a leaf node
-        def build(X: pd.DataFrame, y: pd.Series, depth: int) -> Node:
-
-            # my_criterion, criterion_func = check_criteria(y, self.criterion)
-            # criterion_value = criterion_func(y)
-            # criterion_pair = (my_criterion, criterion_value)     
+        def build(X: pd.DataFrame, y: pd.Series, depth: int) -> Node:  
 
             if depth >= self.max_depth or y.nunique() == 1:
                 if check_ifreal(y):
@@ -77,11 +73,11 @@ class DecisionTree:
                     return Node(is_leaf=True, output=y.mode()[0])
 
             if check_ifreal(X[best_attribute]):
-                best_value = find_optimal_threshold(y, X[best_attribute], self.criterion)
+                opt_val = opt_threshold(y, X[best_attribute], self.criterion)
             else:
-                best_value = X[best_attribute].mode()[0]
+                opt_val = X[best_attribute].mode()[0]
 
-            X_left, y_left, X_right, y_right = split_data(X, y, best_attribute, best_value)
+            X_left, y_left, X_right, y_right = split_data(X, y, best_attribute, opt_val)
 
             # If a valid split is not possible, create a leaf node
             if X_left.empty or X_right.empty:
@@ -93,10 +89,10 @@ class DecisionTree:
             best_gain = information_gain(y, X[best_attribute], self.criterion)
 
                 
-            left_subtree = build(X_left, y_left, depth + 1)
-            right_subtree = build(X_right, y_right, depth + 1)
+            left = build(X_left, y_left, depth + 1)
+            right = build(X_right, y_right, depth + 1)
 
-            return Node(attribute=best_attribute, value=best_value, left=left_subtree, right=right_subtree, gain=best_gain)
+            return Node(attribute=best_attribute, value=opt_val, left=left, right=right, gain=best_gain)
 
         self.tree = build(X, y, depth)
     
@@ -108,7 +104,7 @@ class DecisionTree:
 
         # Traverse the tree you constructed to return the predicted values for the given test inputs.
 
-        def predict_row(x: pd.Series) -> float:
+        def predict_single(x: pd.Series) -> float:
             """
             Function to predict the output for a single row of input
             """
@@ -127,7 +123,7 @@ class DecisionTree:
                         current_node = current_node.right
             return current_node.output
             
-        return pd.Series([predict_row(x) for _, x in X.iterrows()])
+        return pd.Series([predict_single(x) for _, x in X.iterrows()])
 
 
     def plot(self, path=None) -> None:
@@ -146,47 +142,21 @@ class DecisionTree:
         if not self.tree:
             print("Tree not trained yet")
             return
-        
-        dot = Digraph()
-
-        def add_node(node: Node, parent_name: str = None, edge_label: str = None) -> None:
-            node_id = str(id(node))
-            if node.is_leaf:
-                node_label = f"Prediction: {node.output}\n"
-            else:
-                node_label = f"?(attr {node.attribute} <= {node.value:.2f})\n "
-            dot.node(node_id, label=node_label, shape='box' if node.is_leaf else 'ellipse')
-            if parent_name:
-                dot.edge(parent_name, node_id, label=edge_label)
-
-            if node.left:
-                add_node(node.left, node_id, 'Yes')
-            if node.right:
-                add_node(node.right, node_id, 'No')
-
-        add_node(self.tree)
 
         print("\nTree Structure:")
         print(self.print_tree())
-        # dot.render(path, format="png", view=True, cleanup=True)
-        if path:
-            dot.render(path, format="png", view=False, cleanup=True)
-            display(Image(filename=f"{path}.png"))  
-        else:
-            png_data = dot.pipe(format='png')
-            display(Image(data=png_data))
             
     
     def print_tree(self) -> str:
         def print_node(node: Node, indent: str = '') -> str:
             output = ''
             if node.is_leaf:
-                output += f'Class: {node.output}\n'
+                output += f'Class {node.output}\n'
             else:
                 output += f'?(attr {node.attribute} <= {node.value:.2f})\n'
-                output += indent + '    Yes: '
+                output += indent + '     Y: '
                 output += print_node(node.left, indent + '    ')
-                output += indent + '    No: '
+                output += indent + '     N: '
                 output += print_node(node.right, indent + '    ')
 
             return output
@@ -197,5 +167,4 @@ class DecisionTree:
             return print_node(self.tree)
 
 
-    def _repr_(self):
-        return f"DecisionTree(criterion={self.criterion}, max_depth={self.max_depth})\n\nTree Structure:\n{self.print_tree()}"
+    
