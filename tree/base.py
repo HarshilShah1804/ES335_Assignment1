@@ -149,17 +149,15 @@ class DecisionTree:
     
     def print_tree(self) -> str:
         def print_node(node: Node, indent: str = '') -> str:
-            output = ''
             if node.is_leaf:
-                output += f'Class {node.output}\n'
-            else:
-                output += f'?(attr {node.attribute} <= {node.value:.2f})\n'
-                output += indent + '     Y: '
-                output += print_node(node.left, indent + '    ')
-                output += indent + '     N: '
-                output += print_node(node.right, indent + '    ')
-
-            return output
+                return f'Class {node.output}\n'
+            
+            # Format the non-leaf node
+            result = f'?(attribute {node.attribute} <= {node.value:.2f})\n'
+            result += f'{indent}Y: {print_node(node.left, indent + "    ")}'
+            result += f'{indent}N: {print_node(node.right, indent + "    ")}'
+            
+            return result
 
         if not self.tree:
             return "Tree not trained yet"
