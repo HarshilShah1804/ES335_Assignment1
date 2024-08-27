@@ -21,6 +21,7 @@ np.random.seed(42)
 
 @dataclass
 class Node:
+    # The attribute to split upon for non-leaf nodes, None for leaf nodes, and the output value for leaf nodes, gain is the information gain of the split, is_leaf is a boolean value to check if the node is a leaf node, value is the threshold value for real attributes, left and right are the left and right child nodes.
     def __init__(self, attribute=None, value=None, left=None, right=None, is_leaf=False, output=None, gain=0):
         self.attribute = attribute
         self.value = value
@@ -30,6 +31,7 @@ class Node:
         self.output = output
         self.gain = gain
     
+    # Function to check if the node is a leaf node
     def check_leaf(self):
         return self.is_leaf
 
@@ -42,7 +44,7 @@ class DecisionTree:
     def __init__(self, criterion, max_depth=5):
         self.criterion = criterion
         self.max_depth = max_depth
-        self.tree = None
+        self.root_node = None
 
 
     def fit(self, X: pd.DataFrame, y: pd.Series, depth=0) -> None:
@@ -56,13 +58,16 @@ class DecisionTree:
 
         # If the depth exceeds max_depth or all the target values are the same, create a leaf node
         def build(X: pd.DataFrame, y: pd.Series, depth: int) -> Node:  
-
+            #checking if maximum depth is reached or all the target values are same
             if depth >= self.max_depth or y.nunique() == 1:
+                # If the target values are real, return the mean of the target values
                 if check_ifreal(y):
                     return Node(is_leaf=True, output=np.round(y.mean(),4))
+                # If the target values are discrete, return the mode of the target values
                 else:
                     return Node(is_leaf=True, output=y.mode()[0])
             
+            # Find the best attribute to split upon
             best_attribute = opt_split_attribute(X, y, X.columns, self.criterion)
 
             # If no good split is found, create a leaf node
@@ -77,6 +82,7 @@ class DecisionTree:
             else:
                 opt_val = X[best_attribute].mode()[0]
 
+            # Split the data based on the best attribute and value
             X_left, y_left, X_right, y_right = split_data(X, y, best_attribute, opt_val)
 
             # If a valid split is not possible, create a leaf node
@@ -88,13 +94,14 @@ class DecisionTree:
                 
             best_gain = information_gain(y, X[best_attribute], self.criterion)
 
-                
+            # Recursively build the left and right subtrees
             left = build(X_left, y_left, depth + 1)
             right = build(X_right, y_right, depth + 1)
 
             return Node(attribute=best_attribute, value=opt_val, left=left, right=right, gain=best_gain)
 
-        self.tree = build(X, y, depth)
+        # Start building the tree
+        self.root_node = build(X, y, depth)
     
 
     def predict(self, X: pd.DataFrame) -> pd.Series:
@@ -109,7 +116,7 @@ class DecisionTree:
             Function to predict the output for a single row of input
             """
 
-            current_node = self.tree
+            current_node = self.root_node
             while not current_node.check_leaf():
                 if check_ifreal(x[current_node.attribute]):
                     if x[current_node.attribute] <= current_node.value:
@@ -139,7 +146,7 @@ class DecisionTree:
         Where Y => Yes and N => No
         """
         
-        if not self.tree:
+        if not self.root_node:
             print("Tree not trained yet")
             return
 
@@ -159,10 +166,10 @@ class DecisionTree:
             
             return result
 
-        if not self.tree:
+        if not self.root_node:
             return "Tree not trained yet"
         else:
-            return print_node(self.tree)
+            return print_node(self.root_node)
 
 
     

@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from tree.base import DecisionTree
 from metrics import *
 
-np.random.seed(42)
+np.random.seed(5)
 # Test case 1
 # Real Input and Real Output
 

@@ -6,8 +6,6 @@ There is no restriction on following the below template, these fucntions are her
 import numpy as np
 import pandas as pd
 
-
-
 def one_hot_encoding(X: pd.DataFrame) -> pd.DataFrame:
     """
     Function to perform one hot encoding on the input data
@@ -24,8 +22,6 @@ def one_hot_encoding(X: pd.DataFrame) -> pd.DataFrame:
     return X
 
 
-
-
 def check_ifreal(y: pd.Series, real_distinct_threshold: int = 6) -> bool:
     """
     Function to check if the given series has real or discrete values
@@ -39,9 +35,8 @@ def check_ifreal(y: pd.Series, real_distinct_threshold: int = 6) -> bool:
     if pd.api.types.is_float_dtype(y):
         return True
     if pd.api.types.is_integer_dtype(y):
-        return len(y.unique()) >= real_distinct_threshold
+        return len(np.unique(y)) >= real_distinct_threshold
     return False
-
 
 
 def entropy(Y: pd.Series) -> float:
@@ -56,7 +51,6 @@ def entropy(Y: pd.Series) -> float:
     entropy = -np.sum(prob * np.log2(prob + 1e-10))
     return entropy
 
-
 def gini_index(Y: pd.Series) -> float:
     """
     Function to calculate the gini index
@@ -69,7 +63,6 @@ def gini_index(Y: pd.Series) -> float:
     gini_index_value = 1 - np.sum(probs ** 2)
 
     return gini_index_value
-
 
 
 def mse(Y: pd.Series) -> float:
@@ -130,7 +123,7 @@ def opt_threshold(Y: pd.Series, attr: pd.Series, criterion) -> float:
     split_points = (sorted_attr[:-1] + sorted_attr[1:]) / 2
 
     best_threshold = None
-    best_gain = -np.inf
+    opt_gain = -np.inf
 
     for threshold in split_points:
         Y_left = Y[attr <= threshold]
@@ -143,9 +136,9 @@ def opt_threshold(Y: pd.Series, attr: pd.Series, criterion) -> float:
 
         information_gain_value = criterion_func(Y) - total_criterion
 
-        if information_gain_value > best_gain:
+        if information_gain_value > opt_gain:
             best_threshold = threshold
-            best_gain = information_gain_value
+            opt_gain = information_gain_value
 
     return best_threshold
 
@@ -188,6 +181,7 @@ def information_gain(Y: pd.Series, attribute: pd.Series, criterion = None) -> fl
 
 
 
+
 def opt_split_attribute(X: pd.DataFrame, y: pd.Series, features: pd.Series, criterion: str) -> str:
     """
     Function to find the optimal attribute to split about.
@@ -202,14 +196,14 @@ def opt_split_attribute(X: pd.DataFrame, y: pd.Series, features: pd.Series, crit
     # According to wheather the features are real or discrete valued and the criterion, find the attribute from the features series with the maximum information gain (entropy or varinace based on the type of output) or minimum gini index (discrete output).
 
     best_feature = None
-    best_gain = -np.inf
+    opt_gain = -np.inf
 
     for feature in features:
         gain = information_gain(y, X[feature], criterion)
 
-        if gain > best_gain:
+        if gain > opt_gain:
             best_feature = feature
-            best_gain = gain
+            opt_gain = gain
 
     return best_feature
 
