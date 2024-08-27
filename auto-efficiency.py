@@ -37,7 +37,7 @@ X["horsepower"] = pd.to_numeric(X["horsepower"], errors='coerce')
 X["horsepower"] = X["horsepower"].fillna(X["horsepower"].mean())
 
 #split the data into training and testing data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 tree = DecisionTree(criterion="information_gain", max_depth=5)
 tree.fit(X_train, y_train)
 y_hat = tree.predict(X_test)
