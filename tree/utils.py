@@ -42,7 +42,6 @@ def check_ifreal(y: pd.Series, real_distinct_threshold: int = 6) -> bool:
 def entropy(Y: pd.Series) -> float:
     """
     Function to calculate the entropy
-
     entropy = -sum(p_i * log2(p_i))
     """
     
@@ -108,7 +107,6 @@ def check_criteria(Y:pd.Series, criterion: str) -> str:
 def opt_threshold(Y: pd.Series, attr: pd.Series, criterion) -> float:
     """
     Function to find the optimal threshold for a real feature
-
     Returns the threshold value
     """
 

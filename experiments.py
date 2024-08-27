@@ -28,7 +28,6 @@ def generate_data(N, M):
 def measure_training_time(model, X, y):
     start_time = time.time()
     model.fit(X, y)
-    # model.plot()
     return time.time() - start_time
 
 def measure_prediction_time(model, X):
@@ -46,15 +45,23 @@ for N in Ns:
     training_times = []
     prediction_times = []
     for M in Ms:
-        tree = DecisionTree(criterion="information_gain")
-        X, y = generate_data(N, M)
-        training_time = measure_training_time(tree, X, y)
-        training_times.append(training_time)
-        prediction_time = measure_prediction_time(tree, X)
-        prediction_times.append(prediction_time)
+        training_time_sum = 0
+        prediction_time_sum = 0
+        for i in range(3):
+            tree = DecisionTree(criterion="information_gain")
+            X, y = generate_data(N, M)
+            X_train = X.iloc[:int(0.7 * N)]
+            y_train = y.iloc[:int(0.7 * N)]
+            X_test = X.iloc[int(0.7 * N):]
+            y_test = y.iloc[int(0.7 * N):]
+            training_time_sum += measure_training_time(tree, X_train, y_train)
+            prediction_time_sum += measure_prediction_time(tree, X_test)
+        training_times.append(training_time_sum/3)
+        prediction_times.append(prediction_time_sum/3)
+        print("Done ", N, " ", M )
     results[N] = (training_times, prediction_times)
 
-fig, ax = plt.subplots(2, 1)
+fig, ax = plt.subplots(1, 2)
 ax[0].set_title("Training Time")
 ax[1].set_title("Prediction Time")
 ax[0].set_xlabel("Number of Features")
