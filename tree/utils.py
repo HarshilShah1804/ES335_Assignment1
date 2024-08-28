@@ -14,7 +14,7 @@ def one_hot_encoding(X: pd.DataFrame) -> pd.DataFrame:
     """
 
     for column in X.columns:
-        if not check_if_real(X[column]) and len(X[column].unique()) > 2:
+        if not check_ifreal(X[column]) and len(X[column].unique()) > 2:
             dummies = pd.get_dummies(X[column], prefix=column)
             X = pd.concat([X, dummies], axis=1)
             X.drop(column, axis=1, inplace=True)
