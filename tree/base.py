@@ -115,7 +115,6 @@ class DecisionTree:
             """
             Function to predict the output for a single row of input
             """
-
             current_node = self.root_node
             while not current_node.check_leaf():
                 if check_ifreal(x[current_node.attribute]):
