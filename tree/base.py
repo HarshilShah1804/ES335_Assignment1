@@ -8,7 +8,6 @@ You will be expected to use this to make trees for:
 """
 from dataclasses import dataclass
 from typing import Literal, Union
-from graphviz import Digraph
 from IPython.display import Image, display
 
 import numpy as np
